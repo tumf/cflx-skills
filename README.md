@@ -55,16 +55,13 @@ This repository contains two complementary skills for managing the Conflux (Open
 
 ## Installation
 
-Download the `.skill` files and load them in your AI coding environment (Claude Code, OpenCode, etc.).
-
 ```bash
-# Clone the repository
-git clone https://github.com/tumf/cflx-skills.git
-
-# Use the .skill files directly
-# - cflx-proposal.skill
-# - cflx-workflow.skill
+npx skills add tumf/cflx-skills
 ```
+
+This will install both skills:
+- `cflx-proposal` - For interactive proposal creation
+- `cflx-workflow` - For autonomous workflow execution
 
 ## Requirements
 
