@@ -66,6 +66,7 @@ ls <relevant-directory>
 **Rules**:
 - Verb-led (e.g., `add-auth`, `fix-validation`, `refactor-api`)
 - Kebab-case (lowercase with hyphens)
+- Must NOT include date prefixes or suffixes (forbidden: `2026-02-07-add-auth`, `add-auth-2026-02-07`)
 - Concise but descriptive
 - Unique within the project
 
