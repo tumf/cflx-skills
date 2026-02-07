@@ -67,6 +67,21 @@ Manual verification rule:
   * If truly non-mockable: move to Out of Scope / Future Work (without checkboxes) with clear justification
 - Do NOT defer tasks to Future Work based on missing credentials if mocking is possible
 
+**Implementation Blocker escalation (apply -> acceptance gate)**:
+- If implementation is impossible due to major contradiction or non-mockable constraints, you MUST record an explicit blocker for acceptance review
+- Add a new section at the end of `openspec/changes/{change_id}/tasks.md`:
+  * `## Implementation Blocker #<n>`
+  * `- category: <spec_contradiction|external_non_mockable|policy_constraint|other>`
+  * `- evidence:` followed by concrete file paths, commands, or logs
+  * `- impact: <what cannot be completed>`
+  * `- unblock_actions:` with specific follow-up actions
+- The `Implementation Blocker` section MUST NOT use checkboxes
+- At the end of your apply output, emit:
+  * `IMPLEMENTATION_BLOCKER:`
+  * `category: <...>`
+  * `tasks_section: "Implementation Blocker #<n>"`
+- Do NOT claim blocker for tasks that are still automatable inside this repository
+
 Do NOT move to Future Work:
 - **Difficult or complex tasks** - agent must attempt them
 - **Tests** (unit/integration/e2e) - agent can write and run them

@@ -34,6 +34,7 @@ The orchestrator specifies the operation. Parse the invocation to determine:
 - **NO DEFERRAL** - Do not defer tasks based on difficulty or complexity
 - **IMMEDIATE UPDATES** - Update `tasks.md` after EVERY completed task
 - **COMPLETE ALL** - All tasks must be marked `[x]` or moved to Future Work
+- **ESCALATE BLOCKERS** - If implementation is impossible, record an Implementation Blocker for acceptance review
 
 ### Execution Steps
 
@@ -105,6 +106,30 @@ The orchestrator specifies the operation. Parse the invocation to determine:
 - Do not block on missing API keys/credentials
 - Implement stub/fixture for external services
 - Only truly non-mockable dependencies go to Future Work
+
+### Implementation Blocker Escalation
+
+If apply determines the change is currently impossible to implement (for example: spec contradiction, non-mockable external limitation, or policy constraint), do not loop blindly.
+
+1. Add a new section to `openspec/changes/<change-id>/tasks.md`:
+   ```markdown
+   ## Implementation Blocker #<n>
+   - category: <spec_contradiction|external_non_mockable|policy_constraint|other>
+   - evidence:
+     - <file/path:line or concrete command output>
+   - impact: <what cannot be completed>
+   - unblock_actions:
+     - <specific follow-up action 1>
+     - <specific follow-up action 2>
+   ```
+2. The blocker section MUST NOT use checkboxes.
+3. Output a machine-readable marker at the end of apply output:
+   ```text
+   IMPLEMENTATION_BLOCKER:
+   category: <...>
+   tasks_section: "Implementation Blocker #<n>"
+   ```
+4. Keep evidence concrete and actionable so acceptance can judge whether loop stop is warranted.
 
 ### Apply Completion Criteria
 
@@ -186,12 +211,24 @@ Then update `tasks.md` with:
 ACCEPTANCE: CONTINUE
 ```
 
+**BLOCKED** (when blocker escalation is valid):
+```
+ACCEPTANCE: BLOCKED
+
+BLOCKER:
+- category: <...>
+- reason: <short rationale>
+- evidence: <file/path:line or command evidence>
+```
+
 ### Accept Rules
 
 - Each finding must include concrete evidence (file path, function, line)
 - Each finding must be actionable by AI agent
 - Missing secrets MUST NOT cause CONTINUE if mocking is possible
 - Dirty working tree is always FAIL
+- `ACCEPTANCE: BLOCKED` is allowed only when a valid `Implementation Blocker #<n>` exists with concrete evidence and unblock actions
+- If blocker data is weak, speculative, or fixable within repo scope, return FAIL instead of BLOCKED
 
 **For detailed guidance**, read [references/cflx-accept.md](references/cflx-accept.md).
 
@@ -330,7 +367,7 @@ Detailed operation guides:
 | Operation | Trigger | Output | Constraints |
 |-----------|---------|--------|-------------|
 | Apply | "apply <id>" | Completed tasks + code | No questions, update immediately |
-| Accept | "accept" | PASS/FAIL/CONTINUE | Output once, cite evidence |
+| Accept | "accept" | PASS/FAIL/CONTINUE/BLOCKED | Output once, cite evidence |
 | Archive | "archive <id>" | Archived change | Validate before/after |
 
 **REMEMBER**: This skill operates autonomously. Never ask questions. Make decisions based on available context.

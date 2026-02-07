@@ -34,6 +34,10 @@ Required checks:
 6. Dead code check: if code exists but is not invoked by the CLI/TUI/parallel flow described in spec, it is a FAIL.
 7. Regression check: verify that existing features unrelated to this change are not broken.
 8. Evidence: cite at least one file path + function/method where the integration happens.
+9. Implementation blocker gate:
+   - If `tasks.md` contains `## Implementation Blocker #<n>`, evaluate whether blocker evidence is concrete and whether the issue is truly non-resolvable in this apply loop.
+   - If blocker is valid, return `ACCEPTANCE: BLOCKED`.
+   - If blocker is weak, speculative, or fixable in-repo, return `ACCEPTANCE: FAIL` and add actionable follow-up tasks.
 
 FINDINGS format requirements:
 - Each finding MUST include concrete evidence (file path, function name, line number if relevant)
@@ -43,6 +47,17 @@ Output format (output exactly ONCE at the end):
 - If all checks pass: Output "ACCEPTANCE: PASS"
 - If checks fail: Output "ACCEPTANCE: FAIL" followed by FINDINGS and tasks.md update
 - If verification cannot complete in this session: Output "ACCEPTANCE: CONTINUE"
+- If implementation blocker is valid: Output "ACCEPTANCE: BLOCKED" followed by BLOCKER summary
+
+BLOCKED format:
+```
+ACCEPTANCE: BLOCKED
+
+BLOCKER:
+- category: <...>
+- reason: <short rationale>
+- evidence: <file/path:line or command evidence>
+```
 
 CRITICAL - When outputting FAIL:
 1. List ALL issues discovered in the FINDINGS section

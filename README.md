@@ -50,7 +50,7 @@ This repository contains two complementary skills for managing the Conflux (Open
 | Operation | Purpose | Output |
 |-----------|---------|--------|
 | Apply | Implement approved changes | Completed tasks + code |
-| Accept | Verify implementation | PASS / FAIL / CONTINUE |
+| Accept | Verify implementation | PASS / FAIL / CONTINUE / BLOCKED |
 | Archive | Finalize deployed changes | Archived change + updated specs |
 
 ## Installation
@@ -121,6 +121,11 @@ openspec/
 - Update `tasks.md` immediately after each task completion
 - Active sections must have checkboxes (`- [ ]` or `- [x]`)
 - Future Work sections must NOT have checkboxes
+
+### Implementation Blocker Gate
+
+- Apply can escalate `IMPLEMENTATION_BLOCKER` when implementation is truly impossible in current loop
+- Accept can return `ACCEPTANCE: BLOCKED` only with concrete blocker evidence
 
 ### Autonomous Execution (cflx-workflow only)
 
