@@ -115,19 +115,23 @@ If apply determines the change is currently impossible to implement (for example
    ```markdown
    ## Implementation Blocker #<n>
    - category: <spec_contradiction|external_non_mockable|policy_constraint|other>
+   - summary: <one-line human-facing blocker summary>
    - evidence:
-     - <file/path:line or concrete command output>
+      - <file/path:line or concrete command output>
    - impact: <what cannot be completed>
    - unblock_actions:
-     - <specific follow-up action 1>
-     - <specific follow-up action 2>
+      - <specific follow-up action 1>
+      - <specific follow-up action 2>
+   - owner: <team_or_role>
+   - decision_due: <YYYY-MM-DD>
    ```
-2. The blocker section MUST NOT use checkboxes.
+2. The blocker section is human-facing and MUST NOT use checkboxes.
 3. Output a machine-readable marker at the end of apply output:
    ```text
    IMPLEMENTATION_BLOCKER:
    category: <...>
    tasks_section: "Implementation Blocker #<n>"
+   human_action_required: see openspec/changes/<change-id>/tasks.md#implementation-blocker-<n>
    ```
 4. Keep evidence concrete and actionable so acceptance can judge whether loop stop is warranted.
 
@@ -219,6 +223,12 @@ BLOCKER:
 - category: <...>
 - reason: <short rationale>
 - evidence: <file/path:line or command evidence>
+
+Recommended:
+- summary: <one-line human-facing blocker summary>
+- unblock_actions:
+  - <specific follow-up action 1>
+  - <specific follow-up action 2>
 ```
 
 ### Accept Rules

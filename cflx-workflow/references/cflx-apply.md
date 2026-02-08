@@ -72,14 +72,18 @@ Manual verification rule:
 - Add a new section at the end of `openspec/changes/{change_id}/tasks.md`:
   * `## Implementation Blocker #<n>`
   * `- category: <spec_contradiction|external_non_mockable|policy_constraint|other>`
+  * `- summary: <one-line human-facing blocker summary>`
   * `- evidence:` followed by concrete file paths, commands, or logs
   * `- impact: <what cannot be completed>`
   * `- unblock_actions:` with specific follow-up actions
-- The `Implementation Blocker` section MUST NOT use checkboxes
+  * `- owner: <team_or_role>`
+  * `- decision_due: <YYYY-MM-DD>`
+- The `Implementation Blocker` section is human-facing and MUST NOT use checkboxes
 - At the end of your apply output, emit:
   * `IMPLEMENTATION_BLOCKER:`
   * `category: <...>`
   * `tasks_section: "Implementation Blocker #<n>"`
+  * `human_action_required: see openspec/changes/<change-id>/tasks.md#implementation-blocker-<n>`
 - Do NOT claim blocker for tasks that are still automatable inside this repository
 
 Do NOT move to Future Work:

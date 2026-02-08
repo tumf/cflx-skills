@@ -57,6 +57,12 @@ BLOCKER:
 - category: <...>
 - reason: <short rationale>
 - evidence: <file/path:line or command evidence>
+
+Recommended:
+- summary: <one-line human-facing blocker summary>
+- unblock_actions:
+  - <specific follow-up action 1>
+  - <specific follow-up action 2>
 ```
 
 CRITICAL - When outputting FAIL:
