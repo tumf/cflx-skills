@@ -65,29 +65,29 @@ This will install both skills:
 
 ## Requirements
 
-- **Python 3.6+**: Required for the built-in `scripts/cflx.py` tool
+- **Python 3.6+**: Required for the built-in `"$SKILL_ROOT/scripts/cflx.py"` tool
 - **Git**: For version control operations
 - **No Node.js required**: All operations are implemented in Python
 
 ## Built-in Tools
 
-Both skills include `scripts/cflx.py`, a standalone Python implementation that replaces the need for `@fission-ai/openspec` npm package.
+Both skills include `"$SKILL_ROOT/scripts/cflx.py"`, a standalone Python implementation that replaces the need for `@fission-ai/openspec` npm package.
 
 ```bash
 # List changes
-python scripts/cflx.py list
+python3 "$SKILL_ROOT/scripts/cflx.py" list
 
 # List specs
-python scripts/cflx.py list --specs
+python3 "$SKILL_ROOT/scripts/cflx.py" list --specs
 
 # Show change details
-python scripts/cflx.py show <id>
+python3 "$SKILL_ROOT/scripts/cflx.py" show <id>
 
 # Validate change
-python scripts/cflx.py validate <id> --strict
+python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict
 
 # Archive change
-python scripts/cflx.py archive <id> --yes
+python3 "$SKILL_ROOT/scripts/cflx.py" archive <id> --yes
 ```
 
 ## Directory Structure

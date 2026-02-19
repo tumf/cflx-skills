@@ -4,7 +4,7 @@ description: Scaffold a new OpenSpec change and validate strictly.
 model: openai/gpt-5.2-codex
 ---
 
-The user has requested the following change proposal. Use the python scripts/cflx.py instructions to create their change proposal.
+The user has requested the following change proposal. Use the skill script at `python3 "$SKILL_ROOT/scripts/cflx.py"` to create their change proposal.
 <UserRequest>
 $ARGUMENTS
 </UserRequest>
@@ -12,7 +12,7 @@ $ARGUMENTS
 **NOTE**:
 - Always consider the preceding conversation context to interpret the user's intent. If `$ARGUMENTS` is empty, summarize the conversation conclusions and create a proposal. If a change ID is not explicitly provided but can be inferred from context, use it without asking the user.
 
-**MUST**: Bugfixes with no intended spec changes still need at least one minimal `## MODIFIED Requirements` delta (one requirement + one `#### Scenario:`) so `python scripts/cflx.py validate <id> --strict` passes.
+**MUST**: Bugfixes with no intended spec changes still need at least one minimal `## MODIFIED Requirements` delta (one requirement + one `#### Scenario:`) so `python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict` passes.
 **MUST**: If a task is not executable by the AI (requires human action, external systems, or long-wait verification), either move it to a Future work section or omit it from tasks.md entirely.
 
 **External dependency policy (mock-first)**:
@@ -28,18 +28,18 @@ $ARGUMENTS
 - DO NOT edit files outside `openspec/changes/` directory
 - You may READ any files for context gathering
 - You may WRITE only to `openspec/changes/<id>/` paths
-- After proposal validation with `python scripts/cflx.py validate <id> --strict`, STOP and present the proposal to the user
+- After proposal validation with `python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict`, STOP and present the proposal to the user
 
 <!-- OPENSPEC:START -->
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
 - When user requirements can be decomposed into multiple independent proposals, actively create separate change proposals to enable parallel work.
-- Refer to `openspec/AGENTS.md` (located inside the `openspec/` directory—run `ls openspec` or `python scripts/cflx.py update` if you don't see it) if you need additional OpenSpec conventions or clarifications.
+- Refer to `openspec/AGENTS.md` (located inside the `openspec/` directory) if you need additional OpenSpec conventions or clarifications.
 - Identify any vague or ambiguous details and ask the necessary follow-up questions before editing files.
 
 **Steps**
-1. Review `openspec/project.md`, run `python scripts/cflx.py list` and `python scripts/cflx.py list --specs`, and inspect related code or docs (e.g., via `rg`/`ls`) to ground the proposal in current behaviour; note any gaps that require clarification.
+1. Review `openspec/project.md`, run `python3 "$SKILL_ROOT/scripts/cflx.py" list` and `python3 "$SKILL_ROOT/scripts/cflx.py" list --specs`, and inspect related code or docs (e.g., via `rg`/`ls`) to ground the proposal in current behaviour; note any gaps that require clarification.
 2. Choose a unique, verb-led, kebab-case `change-id` with no date prefixes/suffixes (forbidden: `2026-02-07-add-auth`, `add-auth-2026-02-07`) and scaffold `proposal.md`, `tasks.md`, and `design.md` (when needed) under `openspec/changes/<id>/`.
 3. Map the change into concrete capabilities or requirements, breaking multi-scope efforts into distinct spec deltas with clear relationships and sequencing.
 4. Capture architectural reasoning in `design.md` when the solution spans multiple systems, introduces new patterns, or demands trade-off discussion before committing to specs.
@@ -47,10 +47,10 @@ $ARGUMENTS
 6. Draft `tasks.md` as an ordered list of small, verifiable work items that deliver user-visible progress, include validation (tests, tooling), and highlight dependencies or parallelizable work.
 7. For any new capability, include explicit integration/entry-point tasks ("wire it into the execution path") and completion criteria (what code path proves it is used).
 8. Each task must state how completion is verified (e.g., where it is called, the command/output that proves it, or the file/line to inspect).
-9. Validate with `python scripts/cflx.py validate <id> --strict` and resolve every issue before sharing the proposal.
+9. Validate with `python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict` and resolve every issue before sharing the proposal.
 
 **Reference**
-- Use `python scripts/cflx.py show <id> --json --deltas-only` or `python scripts/cflx.py show <spec> --type spec` to inspect details when validation fails.
+- Use `python3 "$SKILL_ROOT/scripts/cflx.py" show <id> --json --deltas-only` or `python3 "$SKILL_ROOT/scripts/cflx.py" show <spec> --type spec` to inspect details when validation fails.
 - Search existing requirements with `rg -n "Requirement:|Scenario:" openspec/specs` before writing new ones.
 - Explore the codebase with `rg <keyword>`, `ls`, or direct file reads so proposals align with current implementation realities.
 <!-- OPENSPEC:END -->

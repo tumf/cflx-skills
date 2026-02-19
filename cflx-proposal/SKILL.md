@@ -7,6 +7,15 @@ description: Create structured Conflux change proposals through interactive conv
 
 Create structured change proposals for Conflux (OpenSpec-based) projects through interactive conversation with users.
 
+## Guardrails (Match Command Behavior)
+
+- Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
+- Keep changes tightly scoped to the requested outcome.
+- Default to proposal splitting: when requirements can be decomposed into independent scopes, create separate change proposals.
+- If uncertain whether to split, prefer splitting unless the scopes are tightly coupled and must ship together to preserve correctness.
+- For each split proposal, use a distinct verb-led `change-id` and keep `proposal.md`, `tasks.md`, and `design.md` (when needed) scoped to that proposal only.
+- When multiple proposals are created, explicitly document dependency/sequence relationships and parallelizability in the final user-facing summary.
+
 ## When to Use This Skill
 
 Trigger this skill when users request:
@@ -54,14 +63,26 @@ openspec/changes/<change-id>/
 **Research existing code**:
 ```bash
 # Review existing specs
-python scripts/cflx.py list --specs
+ python3 "$SKILL_ROOT/scripts/cflx.py" list --specs
 
 # Check related code
 rg "<keyword>"
 ls <relevant-directory>
 ```
 
-### 2. Generate Change ID
+### 2. Evaluate Split Boundaries (Default: Split)
+
+Before writing anything, evaluate whether the request should be split into multiple independent change proposals.
+
+**Default rule**: if scopes are independent or weakly coupled, split into separate `openspec/changes/<change-id>/` proposals.
+
+**Keep as a single proposal only when**:
+- The scopes are tightly coupled and must ship atomically to preserve correctness.
+- The acceptance criteria cannot be verified independently.
+
+When keeping a single proposal despite multiple scopes, explicitly record the rationale in `proposal.md` or `design.md`.
+
+### 3. Generate Change ID
 
 **Rules**:
 - Verb-led (e.g., `add-auth`, `fix-validation`, `refactor-api`)
@@ -72,7 +93,7 @@ ls <relevant-directory>
 
 **Present to user**: "I suggest using the change ID `<id>`. Does this work for you?"
 
-### 3. Draft Proposal Content
+### 4. Draft Proposal Content
 
 Create `openspec/changes/<id>/proposal.md`:
 
@@ -85,7 +106,7 @@ Create `openspec/changes/<id>/proposal.md`:
 
 **Ask for feedback**: "Here's the draft proposal. Would you like to adjust anything?"
 
-### 4. Create Task Breakdown
+### 5. Create Task Breakdown
 
 Create `openspec/changes/<id>/tasks.md`:
 
@@ -111,7 +132,7 @@ Create `openspec/changes/<id>/tasks.md`:
 
 **Present to user**: "I've broken this down into X tasks. Do these cover everything?"
 
-### 5. Design Documentation (Optional)
+### 6. Design Documentation (Optional)
 
 Create `openspec/changes/<id>/design.md` when:
 - Change spans multiple systems
@@ -121,7 +142,7 @@ Create `openspec/changes/<id>/design.md` when:
 
 **Ask**: "Should we document the design decisions in detail?"
 
-### 6. Write Spec Deltas
+### 7. Write Spec Deltas
 
 Create `openspec/changes/<id>/specs/<capability>/spec.md`:
 
@@ -163,11 +184,11 @@ Create `openspec/changes/<id>/specs/<capability>/spec.md`:
 
 **Discuss with user**: "Should we add these requirements to the spec?"
 
-### 7. Validate Proposal
+### 8. Validate Proposal
 
 Run validation:
 ```bash
-python scripts/cflx.py validate <id> --strict
+ python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict
 ```
 
 **If validation fails**:
@@ -178,13 +199,22 @@ python scripts/cflx.py validate <id> --strict
 
 **Present results**: "Validation passed! The proposal is ready for review."
 
-### 8. Final Review
+### 9. Final Review
 
 Present complete proposal to user:
 - Show directory structure
 - Summarize key points
 - Highlight task count
 - Confirm readiness
+
+When the proposal was split into multiple independent change proposals, always present a proposal index:
+
+```
+- change-id
+  - one-line objective
+  - dependency/sequence (if any)
+  - whether it can be implemented in parallel
+```
 
 **Ask**: "The proposal is complete. Would you like to proceed with implementation, or make any final adjustments?"
 
@@ -245,20 +275,20 @@ When designing tasks, follow mock-first approach:
 
 ## Built-in Tools
 
-Use `scripts/cflx.py` for all Conflux operations:
+Use `python3 "$SKILL_ROOT/scripts/cflx.py"` for all Conflux operations:
 
 ```bash
 # List existing changes
-python scripts/cflx.py list
+python3 "$SKILL_ROOT/scripts/cflx.py" list
 
 # List specs
-python scripts/cflx.py list --specs
+python3 "$SKILL_ROOT/scripts/cflx.py" list --specs
 
 # Show change details
-python scripts/cflx.py show <id>
+python3 "$SKILL_ROOT/scripts/cflx.py" show <id>
 
 # Validate proposal
-python scripts/cflx.py validate <id> --strict
+python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict
 ```
 
 ## Best Practices

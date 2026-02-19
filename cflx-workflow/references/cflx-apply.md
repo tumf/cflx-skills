@@ -22,7 +22,7 @@ $ARGUMENTS
 - Keep changes tightly scoped to the requested outcome.
 - Do not run `openspec apply` (the command does not exist).
 - Do not run `/cflx-archive`, `openspec archive`, or any archive command during apply. Archiving is handled by the orchestrator.
-- Refer to `openspec/AGENTS.md` (located inside the `openspec/` directory—run `ls openspec` or `python scripts/cflx.py update` if you don't see it) if you need additional OpenSpec conventions or clarifications.
+- Refer to `openspec/AGENTS.md` (located inside the `openspec/` directory) if you need additional OpenSpec conventions or clarifications.
 
 **Steps**
 Track these steps as TODOs and complete them one by one.
@@ -32,10 +32,10 @@ Track these steps as TODOs and complete them one by one.
 4. Confirm completion before updating statuses—make sure every item in `tasks.md` is finished, including integration/entry-point wiring.
 5. If a task adds new functionality, verify it is reachable from an execution path (call site, CLI/TUI flow, or config entry) before marking complete.
 6. Update the checklist after all work is done so each task is marked `- [x]` and reflects reality.
-6. Reference `python scripts/cflx.py list` or `python scripts/cflx.py show <item>` when additional context is required.
+6. Reference `python3 "$SKILL_ROOT/scripts/cflx.py" list` or `python3 "$SKILL_ROOT/scripts/cflx.py" show <item>` when additional context is required.
 
 **Reference**
-- Use `python scripts/cflx.py show <id> --json --deltas-only` if you need additional context from the proposal while implementing.
+- Use `python3 "$SKILL_ROOT/scripts/cflx.py" show <id> --json --deltas-only` if you need additional context from the proposal while implementing.
 <!-- OPENSPEC:END -->
 
 <system-reminder>
