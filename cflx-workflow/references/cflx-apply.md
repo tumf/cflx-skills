@@ -15,9 +15,6 @@ $ARGUMENTS
 **Goal**: Achieve 100% task completion (all tasks in `openspec/chagens/{change_id}/tasks.md` marked as `- [x]` or moved to Future Work). Implement the approved change fully; update the `tasks.md` as progress is made; and provide all AI-executable verification (build/tests/lint) to the extent possible.
 **Non-Goal**: Archiving the change or running any archive command; human-only steps (manual verification, visual checks, approvals); long-wait tests; production deployment or production testing.
 
-**MUST**: The files under `openspec/changes/*` (tasks.md, design.md, proposal.md) must be written in Japanese.
-
-<!-- OPENSPEC:START -->
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
@@ -37,7 +34,6 @@ Track these steps as TODOs and complete them one by one.
 
 **Reference**
 - Use `npx @fission-ai/openspec@latest show <id> --json --deltas-only` if you need additional context from the proposal while implementing.
-<!-- OPENSPEC:END -->
 
 <system-reminder>
 Your operational mode has changed from plan to build.
