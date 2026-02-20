@@ -1,7 +1,6 @@
 ---
 agent: build
 description: Implement an approved OpenSpec change and keep tasks in sync.
-model: anthropic/claude-sonnet-4-5
 ---
 
 change_id: $1
@@ -16,13 +15,15 @@ $ARGUMENTS
 **Goal**: Achieve 100% task completion (all tasks in `openspec/chagens/{change_id}/tasks.md` marked as `- [x]` or moved to Future Work). Implement the approved change fully; update the `tasks.md` as progress is made; and provide all AI-executable verification (build/tests/lint) to the extent possible.
 **Non-Goal**: Archiving the change or running any archive command; human-only steps (manual verification, visual checks, approvals); long-wait tests; production deployment or production testing.
 
+**MUST**: The files under `openspec/changes/*` (tasks.md, design.md, proposal.md) must be written in Japanese.
+
 <!-- OPENSPEC:START -->
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
 - Do not run `openspec apply` (the command does not exist).
 - Do not run `/cflx-archive`, `openspec archive`, or any archive command during apply. Archiving is handled by the orchestrator.
-- Refer to `openspec/AGENTS.md` (located inside the `openspec/` directory) if you need additional OpenSpec conventions or clarifications.
+- Refer to `openspec/AGENTS.md` (located inside the `openspec/` directory—run `ls openspec` or `npx @fission-ai/openspec@latest update` if you don't see it) if you need additional OpenSpec conventions or clarifications.
 
 **Steps**
 Track these steps as TODOs and complete them one by one.
@@ -32,10 +33,10 @@ Track these steps as TODOs and complete them one by one.
 4. Confirm completion before updating statuses—make sure every item in `tasks.md` is finished, including integration/entry-point wiring.
 5. If a task adds new functionality, verify it is reachable from an execution path (call site, CLI/TUI flow, or config entry) before marking complete.
 6. Update the checklist after all work is done so each task is marked `- [x]` and reflects reality.
-6. Reference `python3 "$SKILL_ROOT/scripts/cflx.py" list` or `python3 "$SKILL_ROOT/scripts/cflx.py" show <item>` when additional context is required.
+6. Reference `npx @fission-ai/openspec@latest list` or `npx @fission-ai/openspec@latest show <item>` when additional context is required.
 
 **Reference**
-- Use `python3 "$SKILL_ROOT/scripts/cflx.py" show <id> --json --deltas-only` if you need additional context from the proposal while implementing.
+- Use `npx @fission-ai/openspec@latest show <id> --json --deltas-only` if you need additional context from the proposal while implementing.
 <!-- OPENSPEC:END -->
 
 <system-reminder>
@@ -47,13 +48,91 @@ CRITICAL OPERATIONAL CONSTRAINTS:
 - You CANNOT ask questions to the user or request clarification during apply operations
 - You MUST continue working until MaxIteration is reached, making your best autonomous decisions
 - You MUST NOT defer tasks to Future Work based on difficulty, complexity, or perceived regression risk
-- The only valid reason to move a task to Future Work is if it is ALREADY marked with '(future work)' explicitly
+- You MAY move tasks to Future Work only under explicitly allowed conditions in this prompt (including permission auto-reject handling below)
 </system-reminder>
+
+**Learning from Previous Iteration Crashes**:
+BEFORE attempting any file operation, check the `<last_apply>` history context for signs of system crashes:
+
+1. **Crash Detection Patterns**:
+   - `stderr_tail` contains "permission requested" + "auto-rejecting"
+   - `exit_code` is non-zero (e.g., 1, 127) with no clear error message
+   - Previous iteration ended abruptly without completing tasks.md updates
+   - stdout/stderr shows the system stopped mid-operation
+
+2. **When Crash is Detected**:
+   - **IDENTIFY** which file/operation caused the crash (look at the last operation mentioned in stdout/stderr)
+   - **DO NOT RETRY** the same operation - it will crash again
+   - **IMMEDIATELY** move the task requiring that operation to Future Work in tasks.md
+   - **DOCUMENT** the crash reason in the Future Work entry
+   - **CONTINUE** with other tasks that don't involve the blocked operation
+
+3. **Example**:
+   ```
+   <last_apply attempt="1">
+   status: failed
+   exit_code: 1
+   stderr_tail:
+   permission requested: read (/path/to/.env.template); auto-rejecting
+   </last_apply>
+
+   → Interpretation: Reading .env.template causes system crash
+   → Action: Move task "Edit .env.template" to Future Work
+   → Reason: "System crash due to permission auto-reject on .env.template"
+   → Continue: Work on other tasks that don't require .env.template
+   ```
+
+**CRITICAL**: If you see the same error pattern in multiple `<last_apply>` attempts, you are in a crash loop. Break the loop by moving the problematic task to Future Work immediately.
+
+**Permission Error Handling**:
+When you encounter a permission error (e.g., "permission requested: read (...); auto-rejecting"):
+
+**CRITICAL**: Do NOT exit immediately. Complete these steps BEFORE finishing:
+
+1. **Catch the error**: Note which file/operation was denied.
+2. **Update tasks.md IMMEDIATELY**:
+   - Identify the specific task that requires the blocked file/operation
+   - Move ONLY that task to a `## Future Work` section
+   - Remove the checkbox from the moved task
+   - Add explanation:
+     ```markdown
+     ## Future Work
+     - Task N: [original task description]
+       - Reason: Permission denied for [operation/file path]
+       - Required action: Update orchestrator permission config (`.cflx.jsonc`) to allow the operation
+     ```
+3. **Continue with remaining tasks**: Work on tasks that don't require the blocked resource.
+4. **Exit strategy**:
+   - If other tasks were completed: Exit with success (partial progress)
+   - If NO other tasks can proceed: Exit with error and permission-blocked summary
+
+Example workflow:
+```
+Task 1: Edit .env.template
+  → Permission denied
+  → Move Task 1 to Future Work in tasks.md
+  → Mark as complete: NO
+
+Task 2: Remove ray imports
+  → No permission needed
+  → Execute and complete
+  → Mark as complete: YES
+
+Task 3: Update tests
+  → No permission needed
+  → Execute and complete
+  → Mark as complete: YES
+
+Result: Exit with success (2/3 tasks done, 1 in Future Work)
+```
+
+**DO NOT** let permission errors stop you from updating tasks.md and continuing with other work.
 
 Move tasks to Future Work ONLY if they meet ONE of these criteria:
 1. **Human work**: Requires human decision-making, judgment, or manual intervention (e.g., 'Ask user for design preference', 'Manual code review', 'Manual TUI verification')
 2. **External system work**: Requires external system deployment, approval, or configuration changes outside this repository (e.g., 'Deploy to production', 'Configure external API', 'Update cloud infrastructure')
 3. **Long-wait verification**: Requires extended waiting periods for validation (e.g., 'Monitor performance for one week', 'Wait for stakeholder approval')
+4. **Permission auto-reject**: The specific task requires an operation/file currently denied by runtime permission policy
 
 Manual verification rule:
 - Any task that explicitly requires manual verification (e.g., "手動確認", "manual verification", "manual check") MUST be moved to Future Work as Human work.
@@ -67,24 +146,43 @@ Manual verification rule:
   * If truly non-mockable: move to Out of Scope / Future Work (without checkboxes) with clear justification
 - Do NOT defer tasks to Future Work based on missing credentials if mocking is possible
 
-**Implementation Blocker escalation (apply -> acceptance gate)**:
-- If implementation is impossible due to major contradiction or non-mockable constraints, you MUST record an explicit blocker for acceptance review
-- Add a new section at the end of `openspec/changes/{change_id}/tasks.md`:
-  * `## Implementation Blocker #<n>`
-  * `- category: <spec_contradiction|external_non_mockable|policy_constraint|other>`
-  * `- summary: <one-line human-facing blocker summary>`
-  * `- evidence:` followed by concrete file paths, commands, or logs
-  * `- impact: <what cannot be completed>`
-  * `- unblock_actions:` with specific follow-up actions
-  * `- owner: <team_or_role>`
-  * `- decision_due: <YYYY-MM-DD>`
-- The `Implementation Blocker` section is human-facing and MUST NOT use checkboxes
-- At the end of your apply output, emit:
-  * `IMPLEMENTATION_BLOCKER:`
-  * `category: <...>`
-  * `tasks_section: "Implementation Blocker #<n>"`
-  * `human_action_required: see openspec/changes/<change-id>/tasks.md#implementation-blocker-<n>`
-- Do NOT claim blocker for tasks that are still automatable inside this repository
+**Implementation Blocker escalation**:
+When you determine that implementation is impossible due to:
+- Specification contradictions (conflicting requirements that cannot be resolved autonomously)
+- Non-mockable external constraints (external systems/services required but not mockable)
+
+You MUST record an Implementation Blocker and escalate to acceptance review:
+
+1. Add a new section to tasks.md with sequential numbering:
+```markdown
+## Implementation Blocker #N
+
+**Category**: [SpecContradiction | ExternalConstraint]
+
+**Root Cause**:
+[Clear explanation of why implementation cannot proceed]
+
+**Evidence**:
+- [Specific file/requirement references]
+- [Code/spec excerpts demonstrating the issue]
+
+**Impact**:
+- Affected tasks: [list task IDs]
+- Scope: [what functionality cannot be implemented]
+
+**Resolution Required**:
+[What action would unblock implementation - e.g., spec clarification, external system access, requirement change]
+```
+
+2. Output to stdout immediately after recording:
+```
+IMPLEMENTATION_BLOCKER:
+Category: [SpecContradiction | ExternalConstraint]
+Summary: [One-line description]
+See tasks.md ## Implementation Blocker #N for details
+```
+
+3. After outputting the blocker, you MAY continue working on other unblocked tasks if any remain, or output normal completion if all actionable tasks are done.
 
 Do NOT move to Future Work:
 - **Difficult or complex tasks** - agent must attempt them
@@ -95,18 +193,18 @@ Do NOT move to Future Work:
 - **Any task the agent can execute autonomously** - agent must complete it
 
 CRITICAL: If a task is automatable but difficult, you MUST attempt it.
-Future Work is ONLY for tasks requiring human action, external systems, or long waiting periods.
+Future Work is ONLY for tasks requiring human action, external systems, long waiting periods, or permission auto-reject blocking a specific operation/file.
 
 Every remaining unchecked task MUST be immediately actionable in this repo and have objective pass/fail criteria.
 If you find a non-actionable task (abstract, subjective, or human-only), rewrite it into one or more actionable tasks with concrete commands and clear acceptance criteria while preserving intent.
-Only when a task truly requires human decision or external action, mark it as '(future work)', move it to a "Future work" section, and remove the checkbox.
+Only when a task truly requires human decision/external action OR is specifically blocked by permission auto-reject, mark it as '(future work)', move it to a "Future work" section, and remove the checkbox.
 Do not allow apply to finish successfully with non-actionable unchecked tasks; normalize tasks until all remaining unchecked tasks are actionable or moved to Future work.
 
 Special handling for 'future work' tasks:
 - If a task is already marked '(future work)', move it to a "Future work" section and remove the checkbox
 - This indicates deferred work, not current implementation scope
-- Do NOT add new '(future work)' markers yourself unless the task meets the strict criteria above (human work, external systems, or long-wait verification)
-- When moving a task to Future Work, verify it truly requires human action, external systems, or long waiting periods
+- Do NOT add new '(future work)' markers yourself unless the task meets the strict criteria above (human work, external systems, long-wait verification, or permission auto-reject)
+- When moving a task to Future Work, verify it truly requires human action, external systems, long waiting periods, or permission auto-reject
 
 CRITICAL: Checkbox removal when moving tasks to excluded sections:
 - When moving tasks to "Future Work", "Out of Scope", or "Notes" sections, you MUST remove the checkbox (`- [ ]` or `- [x]`)
