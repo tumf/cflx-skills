@@ -7,6 +7,13 @@ description: Create structured Conflux change proposals through interactive conv
 
 Create structured change proposals for Conflux (OpenSpec-based) projects through interactive conversation with users.
 
+## Scope Restrictions (Proposal-Only)
+
+- This skill is for proposal creation only. Do NOT implement or modify product/source code.
+- You may READ any files for context gathering.
+- You may WRITE only under `openspec/changes/<change-id>/`.
+- After strict validation passes, stop and present the proposal for review.
+
 ## Guardrails (Match Command Behavior)
 
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
@@ -70,6 +77,10 @@ rg "<keyword>"
 ls <relevant-directory>
 ```
 
+**Strict validation note (common gotcha)**:
+- In strict mode, include at least one spec delta under `openspec/changes/<id>/specs/<capability>/spec.md`.
+- For bugfix-only proposals (no intended new behavior), add a minimal `## MODIFIED Requirements` delta with at least one `### Requirement:` and one `#### Scenario:`.
+
 ### 2. Evaluate Split Boundaries (Default: Split)
 
 Before writing anything, evaluate whether the request should be split into multiple independent change proposals.
@@ -129,6 +140,11 @@ Create `openspec/changes/<id>/tasks.md`:
 - Include verification methods
 - Specify integration/wiring tasks
 - Mark non-AI-executable tasks for Future Work
+
+**External dependency policy (mock-first / verification-first)**:
+- If a requirement cannot be verified locally without credentials or external systems, design mock/stub/fixture-based verification.
+- Do not change production/runtime behavior to "use mocks"; mocks/stubs/fixtures are for tests and local verification.
+- Only truly non-mockable dependencies (human decisions, real external systems, long-wait checks) go to Out of Scope / Future Work.
 
 **Present to user**: "I've broken this down into X tasks. Do these cover everything?"
 
@@ -356,8 +372,7 @@ python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict
 
 ## Reference Files
 
-For detailed guidance on proposal structure and requirements:
-- **[references/cflx-proposal.md](references/cflx-proposal.md)** - Complete proposal creation guide
+No additional reference files.
 
 ## Example Interaction
 
