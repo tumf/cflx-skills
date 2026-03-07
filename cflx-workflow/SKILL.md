@@ -33,8 +33,9 @@ The orchestrator specifies the operation. Parse the invocation to determine:
 - **NO QUESTIONS** - Make autonomous decisions based on available context
 - **NO DEFERRAL** - Do not defer tasks based on difficulty or complexity
 - **IMMEDIATE UPDATES** - Update `tasks.md` after EVERY completed task
-- **COMPLETE ALL** - All tasks must be marked `[x]` or moved to Future Work
+- **COMPLETE ALL TRUTHFULLY** - A task may be marked `[x]` only when the corresponding repository change and required verification actually exist
 - **ESCALATE BLOCKERS** - If implementation is impossible, record an Implementation Blocker for acceptance review
+- **NO CHECKLIST-ONLY COMPLETION** - Do not mark implementation tasks complete based only on proposal/spec/tasks edits when the task requires code, tests, or runtime wiring
 
 ### Execution Steps
 
@@ -47,11 +48,11 @@ The orchestrator specifies the operation. Parse the invocation to determine:
    - Read `openspec/changes/<id>/tasks.md`
 
 2. **Work Through Tasks Sequentially**
-   - Start with first uncompleted task
-   - Implement the change
-   - Run verification (build/test/lint)
-   - Mark task as `[x]` in `tasks.md` immediately
-   - Proceed to next task
+    - Start with first uncompleted task
+    - Implement the change
+    - Run verification (build/test/lint)
+    - Mark task as `[x]` in `tasks.md` immediately after the implementation and verification evidence exist
+    - Proceed to next task
 
 3. **Handle Ambiguity Autonomously**
    - Use existing code patterns as reference
@@ -65,9 +66,30 @@ The orchestrator specifies the operation. Parse the invocation to determine:
    - Keep progress visible
 
 5. **Verify Completion**
-   - Ensure all tasks are `[x]` or in Future Work
-   - Run final validation
-   - Confirm integration points
+    - Ensure all tasks are `[x]` or in Future Work
+    - Run final validation
+    - Confirm integration points
+
+### Truthful Completion Rules
+
+Before changing any task to `[x]`, verify all applicable conditions below are true:
+
+1. The repository contains the required implementation artifact for that task.
+   - Code task -> matching `src/`, app, config, or script diff exists.
+   - Test task -> matching `tests/` diff exists.
+   - Wiring/integration task -> real entrypoint/call-site/config hookup exists.
+   - Spec-only task -> it is explicitly documentation/spec work rather than implementation work.
+2. The artifact is reachable from the intended flow when the task claims runtime integration.
+3. The relevant verification command has been run successfully, or concrete blocker evidence has been recorded.
+4. The task description still matches reality. If the task is too broad or ambiguous, refine it before completion.
+
+Never mark a task complete based only on any of the following:
+
+- `openspec/` files were updated
+- `tasks.md` was normalized
+- a proposal was archived or merged
+- code was discussed but no runtime/test artifact was added
+- a stub placeholder was added where a real execution path was required
 
 ### Task Management
 
@@ -142,6 +164,8 @@ If apply determines the change is currently impossible to implement (for example
 - Tests pass
 - Lint passes
 - Integration points verified
+- Any task that claims implementation, runtime behavior, or entrypoint wiring has corresponding non-OpenSpec evidence in the repo
+- Changes that are spec-only MUST leave implementation tasks unchecked or blocked; they must not be represented as completed implementation
 
 **For detailed guidance**, read [references/cflx-apply.md](references/cflx-apply.md).
 
@@ -161,16 +185,17 @@ If apply determines the change is currently impossible to implement (for example
    - If dirty, output FAIL with all changed files
 
 2. **Task Completion**
-   - All tasks marked `[x]` or in Future Work section
-   - No checkboxes in excluded sections
+    - All tasks marked `[x]` or in Future Work section
+    - No checkboxes in excluded sections
+    - Reject any task marked `[x]` without corresponding repo evidence
 
 3. **Spec Matching**
    - Implementation matches specification in `specs/`
    - All scenarios are satisfied
 
 4. **Integration Check**
-   - Feature is executed in real flow
-   - Called from CLI/TUI/API as specified
+    - Feature is executed in real flow
+    - Called from CLI/TUI/API as specified
 
 5. **Dead Code Check**
    - All implemented code is invoked
@@ -181,8 +206,13 @@ If apply determines the change is currently impossible to implement (for example
    - No unintended side effects
 
 7. **Evidence Citation**
-   - Cite file path + function/method for integration
-   - Provide concrete verification evidence
+    - Cite file path + function/method for integration
+    - Provide concrete verification evidence
+
+8. **Checklist Truthfulness Check**
+   - FAIL if `tasks.md` claims completion but the corresponding code/tests/entrypoints do not exist
+   - FAIL if a change was archived/spec-promoted while implementation tasks were marked complete without repository evidence
+   - FAIL if the only evidence for an implementation task is `openspec/` edits
 
 ### Output Format
 

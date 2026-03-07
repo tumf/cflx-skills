@@ -22,6 +22,11 @@ Create structured change proposals for Conflux (OpenSpec-based) projects through
 - If uncertain whether to split, prefer splitting unless the scopes are tightly coupled and must ship together to preserve correctness.
 - For each split proposal, use a distinct verb-led `change-id` and keep `proposal.md`, `tasks.md`, and `design.md` (when needed) scoped to that proposal only.
 - When multiple proposals are created, explicitly document dependency/sequence relationships and parallelizability in the final user-facing summary.
+- Before asking clarifying questions, proactively gather context from the current session and repository, and treat that gathered context as the default premise for the proposal.
+- Start the user-facing response with a short `Premise / Context` section summarizing the goals, constraints, and relevant repo architecture already discovered.
+- Do not ask the user to choose or confirm the `change-id`; generate a concise unique verb-led slug yourself.
+- If the request is sufficiently clear after context gathering, draft the proposal directly instead of forcing an extra clarification round.
+- For implementation-oriented proposals, make tasks evidence-bearing: each behavior-changing task should name repository-verifiable code, tests, or commands.
 
 ## When to Use This Skill
 
@@ -61,11 +66,25 @@ openspec/changes/<change-id>/
 
 ### 1. Understand the Change
 
-**Ask questions to clarify**:
+First, gather available context proactively before asking questions.
+
+**Context to gather first**:
+- Prior user messages, goals, and constraints from the current session
+- Repository-specific instructions such as `AGENTS.md` or `openspec/AGENTS.md` when present
+- Existing related specs, archived changes, and relevant source/test modules
+- Existing architecture or workflow boundaries already mentioned in the conversation
+
+**Begin the user-facing proposal response with**:
+- `Premise / Context`
+- 3-6 concise bullets summarizing the gathered facts that will shape the proposal
+
+**Ask questions only if still necessary after context gathering**:
 - What problem does this solve?
 - What are the acceptance criteria?
 - Are there any constraints or dependencies?
 - What is the scope (minimal vs. comprehensive)?
+
+If the answer is already inferable from the repository and current conversation, skip the question and proceed.
 
 **Research existing code**:
 ```bash
@@ -102,7 +121,12 @@ When keeping a single proposal despite multiple scopes, explicitly record the ra
 - Concise but descriptive
 - Unique within the project
 
-**Present to user**: "I suggest using the change ID `<id>`. Does this work for you?"
+**Execution rule**:
+- Generate the `change-id` yourself.
+- Do not ask the user to confirm or choose it.
+- If a collision is possible, disambiguate automatically (for example by adding a short suffix).
+
+**Present to user**: "Using change ID `<id>`."
 
 ### 4. Draft Proposal Content
 
@@ -140,6 +164,7 @@ Create `openspec/changes/<id>/tasks.md`:
 - Include verification methods
 - Specify integration/wiring tasks
 - Mark non-AI-executable tasks for Future Work
+- Prefer concrete repository evidence in verification notes (source paths, test files, or runnable commands), not vague statements like "verify implementation works"
 
 **External dependency policy (mock-first / verification-first)**:
 - If a requirement cannot be verified locally without credentials or external systems, design mock/stub/fixture-based verification.
@@ -155,6 +180,8 @@ Create `openspec/changes/<id>/design.md` when:
 - Architectural decisions need documentation
 - Trade-offs require explanation
 - Complex implementation patterns
+
+Design documentation is strongly recommended when the proposal introduces orchestration, durable state, cross-service coordination, background workers, adapters, or other multi-layer behavior.
 
 **Ask**: "Should we document the design decisions in detail?"
 
@@ -305,6 +332,12 @@ python3 "$SKILL_ROOT/scripts/cflx.py" show <id>
 
 # Validate proposal
 python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict
+
+# Validate proposal with implementation-evidence warnings
+python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict --evidence warn
+
+# Validate proposal with implementation-evidence errors
+python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict --evidence error
 ```
 
 ## Best Practices
@@ -314,12 +347,15 @@ python3 "$SKILL_ROOT/scripts/cflx.py" validate <id> --strict
 - Summarize understanding before proceeding
 - Present options with recommendations
 - Confirm major decisions
+- Prefer making a reasonable default proposal after context gathering over repeatedly blocking on optional clarification
+- When you must ask a question, state the recommended default and what would change based on the answer
 
 ### Proposal Quality
 - Keep scope focused and minimal
 - Break large changes into multiple proposals
 - Include clear acceptance criteria
 - Specify verification for each task
+- Make implementation-facing tasks hard to mark complete without source/test evidence
 
 ### User Experience
 - Be responsive to feedback

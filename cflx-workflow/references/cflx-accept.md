@@ -60,14 +60,26 @@ Required checks (only run if no valid Implementation Blocker exists):
 5. Integration check: confirm the feature is actually executed in the real flow.
 6. Dead code check: if code exists but is not invoked by the CLI/TUI/parallel flow described in spec, it is a FAIL.
 7. No stubbed runtime check: FAIL if the real execution path uses a mock/stub/fake/placeholder implementation.
-   - Examples of disallowed runtime placeholders: `todo!()`, `unimplemented!()`, always-empty returns, `Fake*`/`Mock*`/`Stub*` clients in non-test code, or feature-flagged mocks enabled by default.
-   - Mocks/stubs/fakes are allowed only in test-only code paths (`#[cfg(test)]`, `tests/`).
+    - Examples of disallowed runtime placeholders: `todo!()`, `unimplemented!()`, always-empty returns, `Fake*`/`Mock*`/`Stub*` clients in non-test code, or feature-flagged mocks enabled by default.
+    - Mocks/stubs/fakes are allowed only in test-only code paths (`#[cfg(test)]`, `tests/`).
 8. Regression check: verify that existing features unrelated to this change are not broken.
 9. Evidence: cite at least one file path + function/method where the integration happens.
+10. Checklist truthfulness check:
+   - FAIL if `tasks.md` marks implementation work complete but the repository contains only `openspec/` edits for that claimed work.
+   - FAIL if a task marked `[x]` claims runtime behavior, code, tests, or wiring that cannot be located in the repo.
+   - FAIL if a merge/archive/spec-promotion occurred without corresponding implementation evidence for completed tasks.
+   - FAIL if acceptance evidence relies only on proposal/spec/task documents rather than executable code/tests/integration points.
+
+When evaluating completed tasks, use this evidence hierarchy:
+1. Real entrypoint or call-site wiring in non-test code
+2. Tests that exercise the claimed behavior
+3. Build/lint/typecheck output proving the relevant files participate in the repo
+4. `openspec/` documents only as supporting context, never as sole proof of implementation
 
 FINDINGS format requirements:
 - Each finding MUST include concrete evidence (file path, function name, line number if relevant)
 - Each finding MUST be actionable by the AI agent autonomously
+- If the problem is false completion, the finding MUST explicitly name the task/checklist claim that is unsupported
 
 Output format (output exactly ONCE at the end):
 - If valid Implementation Blocker exists: Output "ACCEPTANCE: BLOCKED"
@@ -78,6 +90,11 @@ Output format (output exactly ONCE at the end):
 CRITICAL - When outputting FAIL:
 1. List ALL issues discovered in the FINDINGS section
 2. After listing all findings, update openspec/changes/<change_id>/tasks.md:
-   - Determine the next acceptance attempt number (check existing "## Acceptance #N Failure Follow-up" sections)
-   - Append or create the section for that attempt
-   - Add each finding as a separate unchecked task: "- [ ] <finding>"
+    - Determine the next acceptance attempt number (check existing "## Acceptance #N Failure Follow-up" sections)
+    - Append or create the section for that attempt
+    - Add each finding as a separate unchecked task: "- [ ] <finding>"
+
+Examples of mandatory FAIL cases:
+- `tasks.md` says loop worker/CLI/runtime flow is complete, but no worker/CLI/runtime files exist outside `openspec/`
+- tasks are all `[x]`, but the only diff in the implementation commit is proposal/spec/tasks edits
+- spec requirements were promoted to canonical specs while source/test integration is still absent

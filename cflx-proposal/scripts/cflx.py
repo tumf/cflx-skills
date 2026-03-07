@@ -6,12 +6,14 @@ A standalone Python implementation of essential OpenSpec operations.
 
 import argparse
 import json
-import os
 import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
+
+
+EvidenceMode = Literal["off", "warn", "error"]
 
 
 class Colors:
@@ -28,6 +30,38 @@ class Colors:
 
 class OpenSpecManager:
     """Manage OpenSpec changes and specifications."""
+
+    _BEHAVIOR_TASK_KEYWORDS = (
+        "add ",
+        "implement ",
+        "create ",
+        "update ",
+        "modify ",
+        "introduce ",
+        "wire ",
+        "integrate ",
+        "expose ",
+        "persist ",
+        "support ",
+        "build ",
+    )
+
+    _EVIDENCE_HINTS = (
+        "src/",
+        "tests/",
+        "uv run ",
+        "pytest",
+        "make ",
+        "python ",
+        "python3 ",
+        "cflx validate",
+        ".py",
+        ".ts",
+        ".js",
+        ".rs",
+        ".go",
+        " --once",
+    )
 
     def __init__(self, root_dir: str = "."):
         self.root_dir = Path(root_dir).resolve()
@@ -79,9 +113,7 @@ class OpenSpecManager:
 
         return sorted(specs, key=lambda x: x["name"])
 
-    def _get_change_info(
-        self, change_dir: Path, archived: bool = False
-    ) -> Optional[Dict]:
+    def _get_change_info(self, change_dir: Path, archived: bool = False) -> Optional[Dict]:
         """Extract change information from directory."""
         proposal_file = change_dir / "proposal.md"
         tasks_file = change_dir / "tasks.md"
@@ -176,9 +208,7 @@ class OpenSpecManager:
                 if spec_dir.is_dir():
                     spec_file = spec_dir / "spec.md"
                     if spec_file.exists():
-                        info["specs"][spec_dir.name] = spec_file.read_text(
-                            encoding="utf-8"
-                        )
+                        info["specs"][spec_dir.name] = spec_file.read_text(encoding="utf-8")
 
         if deltas_only and "specs" in info:
             # Only return spec deltas
@@ -201,30 +231,45 @@ class OpenSpecManager:
         return None
 
     def validate_change(
-        self, change_id: Optional[str] = None, strict: bool = False
-    ) -> Tuple[bool, List[str]]:
+        self,
+        change_id: Optional[str] = None,
+        strict: bool = False,
+        evidence_mode: EvidenceMode = "off",
+    ) -> Tuple[bool, List[str], List[str]]:
         """Validate a change or all changes."""
         errors = []
+        warnings = []
 
         if change_id:
             change_dir = self._find_change_dir(change_id)
             if not change_dir:
                 errors.append(f"Change '{change_id}' not found")
-                return False, errors
+                return False, errors, warnings
 
-            errors.extend(self._validate_change_dir(change_dir, strict))
+            change_errors, change_warnings = self._validate_change_dir(
+                change_dir, strict, evidence_mode
+            )
+            errors.extend(change_errors)
+            warnings.extend(change_warnings)
         else:
             # Validate all changes
             if self.changes_dir.exists():
                 for item in self.changes_dir.iterdir():
                     if item.is_dir() and item.name != "archive":
-                        errors.extend(self._validate_change_dir(item, strict))
+                        change_errors, change_warnings = self._validate_change_dir(
+                            item, strict, evidence_mode
+                        )
+                        errors.extend(change_errors)
+                        warnings.extend(change_warnings)
 
-        return len(errors) == 0, errors
+        return len(errors) == 0, errors, warnings
 
-    def _validate_change_dir(self, change_dir: Path, strict: bool) -> List[str]:
+    def _validate_change_dir(
+        self, change_dir: Path, strict: bool, evidence_mode: EvidenceMode
+    ) -> Tuple[List[str], List[str]]:
         """Validate a single change directory."""
         errors = []
+        warnings = []
         change_id = change_dir.name
 
         # Check required files
@@ -245,8 +290,14 @@ class OpenSpecManager:
 
         # Validate tasks format
         if tasks_file.exists():
-            task_errors = self._validate_tasks_file(tasks_file, change_id)
+            task_errors, task_warnings = self._validate_tasks_file(
+                tasks_file,
+                change_id,
+                strict=strict,
+                evidence_mode=evidence_mode,
+            )
             errors.extend(task_errors)
+            warnings.extend(task_warnings)
 
         # Validate spec deltas (strict mode)
         if strict:
@@ -255,15 +306,20 @@ class OpenSpecManager:
                 spec_errors = self._validate_specs_dir(specs_dir, change_id)
                 errors.extend(spec_errors)
             elif strict:
-                errors.append(
-                    f"{change_id}: No spec deltas found (required in strict mode)"
-                )
+                errors.append(f"{change_id}: No spec deltas found (required in strict mode)")
 
-        return errors
+        return errors, warnings
 
-    def _validate_tasks_file(self, tasks_file: Path, change_id: str) -> List[str]:
+    def _validate_tasks_file(
+        self,
+        tasks_file: Path,
+        change_id: str,
+        strict: bool = False,
+        evidence_mode: EvidenceMode = "off",
+    ) -> Tuple[List[str], List[str]]:
         """Validate tasks.md file format."""
         errors = []
+        warnings = []
         content = tasks_file.read_text(encoding="utf-8")
         lines = content.split("\n")
 
@@ -284,20 +340,68 @@ class OpenSpecManager:
                 errors.append(
                     f"{change_id}: tasks.md:{i}: Checkbox found in excluded section (should be removed)"
                 )
+                continue
+
+            checkbox_match = re.match(r"^\s*[-*]\s*\[([ x])\]\s+(.*)$", line)
+            if checkbox_match and not in_excluded_section:
+                task_text = checkbox_match.group(2).strip()
+                verification_match = re.search(
+                    r"\(verification:\s*(.+?)\)\s*[.。]?$",
+                    task_text,
+                    re.IGNORECASE,
+                )
+                if strict and evidence_mode != "off" and self._looks_like_behavior_task(task_text):
+                    if verification_match is None:
+                        self._append_evidence_issue(
+                            errors,
+                            warnings,
+                            evidence_mode,
+                            f"{change_id}: tasks.md:{i}: Behavior-bearing task missing "
+                            "'(verification: ...)' note",
+                        )
+                    else:
+                        verification_text = verification_match.group(1).strip()
+                        if not self._has_repository_evidence_hint(verification_text):
+                            self._append_evidence_issue(
+                                errors,
+                                warnings,
+                                evidence_mode,
+                                f"{change_id}: tasks.md:{i}: Verification note should cite "
+                                "repository-verifiable evidence such as source paths, tests, "
+                                "or runnable commands",
+                            )
 
             # Check for tasks without checkboxes in active sections
-            if (
-                not in_excluded_section
-                and re.match(r"^\s*[-*]\s+[^[]", line)
-                and line.strip()
-            ):
+            if not in_excluded_section and re.match(r"^\s*[-*]\s+[^[]", line) and line.strip():
                 # Might be a task without checkbox
                 if not line.strip().startswith(("##", "#", "---", "```")):
                     errors.append(
                         f"{change_id}: tasks.md:{i}: Possible task without checkbox: {line.strip()[:50]}"
                     )
 
-        return errors
+        return errors, warnings
+
+    @staticmethod
+    def _append_evidence_issue(
+        errors: List[str],
+        warnings: List[str],
+        evidence_mode: EvidenceMode,
+        message: str,
+    ) -> None:
+        if evidence_mode == "error":
+            errors.append(message)
+        elif evidence_mode == "warn":
+            warnings.append(message)
+
+    @classmethod
+    def _looks_like_behavior_task(cls, task_text: str) -> bool:
+        normalized = task_text.strip().lower()
+        return any(keyword in normalized for keyword in cls._BEHAVIOR_TASK_KEYWORDS)
+
+    @classmethod
+    def _has_repository_evidence_hint(cls, verification_text: str) -> bool:
+        normalized = verification_text.strip().lower()
+        return any(hint in normalized for hint in cls._EVIDENCE_HINTS)
 
     def _validate_specs_dir(self, specs_dir: Path, change_id: str) -> List[str]:
         """Validate spec delta files."""
@@ -341,9 +445,7 @@ class OpenSpecManager:
 
         return errors
 
-    def archive_change(
-        self, change_id: str, skip_specs: bool = False
-    ) -> Tuple[bool, str]:
+    def archive_change(self, change_id: str, skip_specs: bool = False) -> Tuple[bool, str]:
         """Archive a deployed change."""
         change_dir = self.changes_dir / change_id
 
@@ -354,9 +456,15 @@ class OpenSpecManager:
             return False, f"Change '{change_id}' is already archived"
 
         # Validate before archiving
-        is_valid, errors = self.validate_change(change_id, strict=True)
+        is_valid, errors, warnings = self.validate_change(
+            change_id, strict=True, evidence_mode="error"
+        )
         if not is_valid:
             return False, f"Validation failed:\n" + "\n".join(errors)
+        if warnings:
+            return False, f"Validation warnings must be resolved before archive:\n" + "\n".join(
+                warnings
+            )
 
         # Create archive directory if needed
         self.archive_dir.mkdir(parents=True, exist_ok=True)
@@ -403,15 +511,11 @@ class OpenSpecManager:
             # If canonical spec exists, merge; otherwise create
             if canonical_spec.exists():
                 canonical_content = canonical_spec.read_text(encoding="utf-8")
-                merged_content = self._merge_spec_delta(
-                    canonical_content, delta_content
-                )
+                merged_content = self._merge_spec_delta(canonical_content, delta_content)
                 canonical_spec.write_text(merged_content, encoding="utf-8")
             else:
                 # Extract requirements from delta
-                canonical_spec.write_text(
-                    self._delta_to_canonical(delta_content), encoding="utf-8"
-                )
+                canonical_spec.write_text(self._delta_to_canonical(delta_content), encoding="utf-8")
 
             updated.append(spec_dir.name)
 
@@ -424,9 +528,7 @@ class OpenSpecManager:
         result = canonical
 
         # Extract ADDED requirements
-        added_section = re.search(
-            r"## ADDED Requirements(.+?)(?=## |$)", delta, re.DOTALL
-        )
+        added_section = re.search(r"## ADDED Requirements(.+?)(?=## |$)", delta, re.DOTALL)
         if added_section:
             result += "\n\n" + added_section.group(1).strip()
 
@@ -502,11 +604,7 @@ def print_change_detail(change: Dict, json_output: bool = False):
         print(f"\n{Colors.BOLD}Spec Deltas:{Colors.RESET}")
         for spec_name, spec_content in change["specs"].items():
             print(f"\n  {Colors.CYAN}{spec_name}:{Colors.RESET}")
-            print(
-                f"  {spec_content[:300]}..."
-                if len(spec_content) > 300
-                else f"  {spec_content}"
-            )
+            print(f"  {spec_content[:300]}..." if len(spec_content) > 300 else f"  {spec_content}")
 
 
 def main():
@@ -519,34 +617,32 @@ def main():
 
     # list command
     list_parser = subparsers.add_parser("list", help="List changes or specs")
-    list_parser.add_argument(
-        "--specs", action="store_true", help="List specs instead of changes"
-    )
+    list_parser.add_argument("--specs", action="store_true", help="List specs instead of changes")
 
     # show command
     show_parser = subparsers.add_parser("show", help="Show change details")
     show_parser.add_argument("change_id", help="Change ID to show")
     show_parser.add_argument("--json", action="store_true", help="Output as JSON")
-    show_parser.add_argument(
-        "--deltas-only", action="store_true", help="Show only spec deltas"
-    )
+    show_parser.add_argument("--deltas-only", action="store_true", help="Show only spec deltas")
 
     # validate command
     validate_parser = subparsers.add_parser("validate", help="Validate changes")
     validate_parser.add_argument(
         "change_id", nargs="?", help="Change ID to validate (omit for all)"
     )
+    validate_parser.add_argument("--strict", action="store_true", help="Strict validation mode")
     validate_parser.add_argument(
-        "--strict", action="store_true", help="Strict validation mode"
+        "--evidence",
+        choices=("off", "warn", "error"),
+        default="off",
+        help="How to treat missing implementation evidence in tasks.md",
     )
 
     # archive command
     archive_parser = subparsers.add_parser("archive", help="Archive a deployed change")
     archive_parser.add_argument("change_id", help="Change ID to archive")
     archive_parser.add_argument("--yes", action="store_true", help="Skip confirmation")
-    archive_parser.add_argument(
-        "--skip-specs", action="store_true", help="Skip spec updates"
-    )
+    archive_parser.add_argument("--skip-specs", action="store_true", help="Skip spec updates")
 
     args = parser.parse_args()
 
@@ -574,16 +670,18 @@ def main():
             print_change_detail(change, json_output=args.json)
 
         elif args.command == "validate":
-            is_valid, errors = manager.validate_change(
-                args.change_id, strict=args.strict
+            is_valid, errors, warnings = manager.validate_change(
+                args.change_id,
+                strict=args.strict,
+                evidence_mode=args.evidence,
             )
+            for warning in warnings:
+                print(f"{Colors.YELLOW}! {warning}{Colors.RESET}", file=sys.stderr)
             if is_valid:
                 print(f"{Colors.GREEN}✓ Validation passed{Colors.RESET}")
                 return 0
             else:
-                print(
-                    f"{Colors.RED}✗ Validation failed:{Colors.RESET}", file=sys.stderr
-                )
+                print(f"{Colors.RED}✗ Validation failed:{Colors.RESET}", file=sys.stderr)
                 for error in errors:
                     print(f"  {error}", file=sys.stderr)
                 return 1
@@ -595,9 +693,7 @@ def main():
                     print("Cancelled")
                     return 0
 
-            success, message = manager.archive_change(
-                args.change_id, skip_specs=args.skip_specs
-            )
+            success, message = manager.archive_change(args.change_id, skip_specs=args.skip_specs)
             if success:
                 print(f"{Colors.GREEN}✓ {message}{Colors.RESET}")
                 return 0

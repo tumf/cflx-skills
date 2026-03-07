@@ -12,7 +12,7 @@ $ARGUMENTS
 **CRITICAL**: You CANNOT ask questions to the user during apply operations. If anything is unclear or ambiguous, make your best autonomous decision based on available context (proposal.md, design.md, tasks.md, existing code patterns). Document your decisions in implementation comments if needed.
 
 
-**Goal**: Achieve 100% task completion (all tasks in `openspec/chagens/{change_id}/tasks.md` marked as `- [x]` or moved to Future Work). Implement the approved change fully; update the `tasks.md` as progress is made; and provide all AI-executable verification (build/tests/lint) to the extent possible.
+**Goal**: Achieve truthful task completion (all tasks in `openspec/changes/{change_id}/tasks.md` marked as `- [x]` only when the corresponding implementation and verification evidence actually exist, or moved to Future Work under allowed conditions). Implement the approved change fully; update `tasks.md` as progress is made; and provide all AI-executable verification (build/tests/lint) to the extent possible.
 **Non-Goal**: Archiving the change or running any archive command; human-only steps (manual verification, visual checks, approvals); long-wait tests; production deployment or production testing.
 
 **Guardrails**
@@ -27,10 +27,17 @@ Track these steps as TODOs and complete them one by one.
 1. Read `changes/<id>/proposal.md`, `design.md` (if present), and `tasks.md` to confirm scope and acceptance criteria.
 2. Work through tasks sequentially, keeping edits minimal and focused on the requested change.
 3. While implementing, update `tasks.md` frequently so progress stays in sync (e.g., after each meaningful subtask).
-4. Confirm completion before updating statuses—make sure every item in `tasks.md` is finished, including integration/entry-point wiring.
+4. Confirm completion before updating statuses - make sure every item in `tasks.md` is finished, including integration/entry-point wiring.
 5. If a task adds new functionality, verify it is reachable from an execution path (call site, CLI/TUI flow, or config entry) before marking complete.
-6. Update the checklist after all work is done so each task is marked `- [x]` and reflects reality.
-6. Reference `npx @fission-ai/openspec@latest list` or `npx @fission-ai/openspec@latest show <item>` when additional context is required.
+6. Before marking any task `- [x]`, confirm the repository contains the corresponding non-OpenSpec artifact when the task is implementation-oriented:
+   - code task -> `src/`/app/config/script diff exists
+   - test task -> `tests/` diff exists
+   - integration task -> real entrypoint/call-site wiring exists
+   - runtime task -> no placeholder/stub-only execution path unless the task explicitly asked for a stub
+7. Never treat `openspec/` edits alone as sufficient evidence for an implementation task.
+8. If a task is broader than what can be truthfully completed, split/refine the task in `tasks.md` before marking anything complete.
+9. Update the checklist after all work is done so each task marked `- [x]` reflects repository reality, not intent.
+10. Reference `npx @fission-ai/openspec@latest list` or `npx @fission-ai/openspec@latest show <item>` when additional context is required.
 
 **Reference**
 - Use `npx @fission-ai/openspec@latest show <id> --json --deltas-only` if you need additional context from the proposal while implementing.
@@ -45,7 +52,14 @@ CRITICAL OPERATIONAL CONSTRAINTS:
 - You MUST continue working until MaxIteration is reached, making your best autonomous decisions
 - You MUST NOT defer tasks to Future Work based on difficulty, complexity, or perceived regression risk
 - You MAY move tasks to Future Work only under explicitly allowed conditions in this prompt (including permission auto-reject handling below)
+- You MUST NOT convert implementation tasks into completed work using only checklist/spec/archive edits
 </system-reminder>
+
+**Truthfulness over checklist closure**:
+- A checked task is a claim about repository state, not intent.
+- If code/tests/wiring are missing, leave the task unchecked, refine it, or record an Implementation Blocker/Future Work under the allowed rules.
+- Do not optimize for "100% complete" at the cost of false completion.
+- Archiving/spec promotion/merged proposal state never counts as implementation evidence by itself.
 
 **Learning from Previous Iteration Crashes**:
 BEFORE attempting any file operation, check the `<last_apply>` history context for signs of system crashes:
@@ -180,6 +194,11 @@ See tasks.md ## Implementation Blocker #N for details
 
 3. After outputting the blocker, you MAY continue working on other unblocked tasks if any remain, or output normal completion if all actionable tasks are done.
 
+Use an Implementation Blocker instead of falsely completing tasks when:
+- the spec requires runtime behavior but no implementable entrypoint can be wired from repo context
+- the accepted tasks claim a larger implementation than the current repository changes can truthfully satisfy
+- only `openspec/` edits exist for a task that requires source/test/runtime changes
+
 Do NOT move to Future Work:
 - **Difficult or complex tasks** - agent must attempt them
 - **Tests** (unit/integration/e2e) - agent can write and run them
@@ -225,3 +244,9 @@ MANDATORY: Keep tasks.md updated throughout the apply process
 - If you split or refine a task during implementation, update tasks.md at the same time
 - Before finishing apply, verify that tasks.md accurately reflects all completed work
 - Never leave completed work unmarked in tasks.md - progress visibility is critical
+
+MANDATORY: Final truthfulness check before apply exits successfully
+- Re-read `tasks.md` and inspect the repo diff or affected files for every task marked `- [x]`
+- If a checked task lacks matching repo evidence, revert that checkbox change and either continue implementation or record a blocker/future work item
+- If the change claims a real execution flow, cite the exact entrypoint or test path that proves the flow exists
+- If the resulting work is spec-only, implementation tasks must remain unchecked or be explicitly reclassified; do not present the change as implemented
