@@ -4,12 +4,14 @@ Conflux workflow management skills for AI coding assistants.
 
 ## Overview
 
-This repository contains two complementary skills for managing the Conflux (OpenSpec-based) change lifecycle:
+This repository contains three complementary skills for managing the Conflux (OpenSpec-based) change lifecycle:
 
 ```
 [Human] → cflx-proposal → Proposal Creation (interactive)
                 ↓
-        [Conflux Orchestrator]
+        [Committed change on base branch]
+                ↓
+           cflx-run → `cflx run` orchestration
                 ↓
         cflx-workflow (apply) → Implementation (autonomous)
                 ↓
@@ -53,14 +55,25 @@ This repository contains two complementary skills for managing the Conflux (Open
 | Accept | Verify implementation | PASS / FAIL / CONTINUE / BLOCKED |
 | Archive | Finalize deployed changes | Archived change + updated specs |
 
+### cflx-run
+
+**Purpose**: Prepare a clean base branch and run `cflx run` for committed OpenSpec changes.
+
+**Characteristics**:
+- Human-invoked operational mode
+- Verifies clean working tree and base branch
+- Checks whether upstream sync is needed
+- Runs Conflux orchestration and reviews the merge result
+
 ## Installation
 
 ```bash
 npx skills add tumf/cflx-skills
 ```
 
-This will install both skills:
+This will install all three skills:
 - `cflx-proposal` - For interactive proposal creation
+- `cflx-run` - For executing `cflx run` from a clean base branch
 - `cflx-workflow` - For autonomous workflow execution
 
 ## Requirements
